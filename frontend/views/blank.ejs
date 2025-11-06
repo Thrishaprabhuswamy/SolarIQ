@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOLARIQ Dashboard</title>
+
+  <!-- Tailwind & Chart.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Custom styling */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Poppins", sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #ffffff;
+      overflow-x: hidden;
+    }
+
+    /* Fixed full-width navbar */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: #001f3f; /* Navy blue */
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 40px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+
+    .logo {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .profile {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid white;
+    }
+
+    .profile img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Push content below fixed navbar */
+    main {
+      margin-top: 90px;
+      background-color: #ffffff;
+    }
+
+    /* Dashboard visuals (from your colorful version) */
+    nav.tailwind {
+      backdrop-filter: blur(6px);
+    }
+    .chart-card { height: 340px; }
+    .small-chart { height: 260px; }
+    .kpi-anim { transition: transform .18s ease, box-shadow .18s ease; }
+    .kpi-anim:hover { transform: translateY(-6px); box-shadow: 0 12px 30px rgba(16,24,40,0.12); }
+    .glass { background: linear-gradient(135deg, rgba(255,255,255,0.65), rgba(255,255,255,0.45)); box-shadow: 0 6px 18px rgba(2,6,23,0.06); }
+    .pred-positive { background: linear-gradient(90deg,#ecfdf5,#d1fae5); border-left: 4px solid #10b981; }
+    .pred-negative { background: linear-gradient(90deg,#fff1f2,#fee2e2); border-left: 4px solid #ef4444; }
+    .muted { color: #6b7280; }
+  </style>
+</head>
+
+<body>
+  <!-- 🌞 Navy Navbar -->
+  <nav>
+    <div class="logo">SOLARIQ</div>
+    <div class="profile">
+      <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="User Profile" />
+    </div>
+  </nav>
+
+  <!-- 🌞 Tailwind Forecast Dashboard -->
+  <main class="p-6 max-w-7xl mx-auto">
+    <header class="mb-6 flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold text-slate-800">SolarIQ Dashboard</h1>
+        <p class="text-sm muted mt-1">Interactive forecasting and predictive analysis for your campus PV system.</p>
+      </div>
+
+      <div class="flex gap-2 items-center">
+        <label class="text-xs muted">Start</label>
+        <input id="startDate" type="date" class="border rounded-lg px-3 py-2 text-sm" />
+        <label class="text-xs muted">End</label>
+        <input id="endDate" type="date" class="border rounded-lg px-3 py-2 text-sm" />
+        <select id="viewMode" class="border rounded-lg px-3 py-2 text-sm">
+          <option value="day">Day</option>
+          <option value="week" selected>Week</option>
+          <option value="month">Month</option>
+          <option value="year">Year</option>
+        </select>
+        <button id="applyRangeBtn" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-pink-500 text-white rounded-lg">Apply</button>
+      </div>
+    </header>
+
+    <!-- KPIs -->
+    <div id="kpis" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+
+    <section class="grid md:grid-cols-3 gap-4">
+      <!-- Charts Section -->
+      <div class="md:col-span-2 space-y-4">
+        <div class="p-4 rounded-2xl glass chart-card overflow-hidden">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-semibold text-slate-700">Generation vs Load — Actual & Forecast</h3>
+            <div class="flex items-center gap-2">
+              <label class="text-xs muted">Horizon</label>
+              <input id="forecastHorizon" type="number" value="7" min="1" max="30" class="w-16 border rounded px-2 py-1 text-sm" />
+              <button id="runForecastBtn" class="px-3 py-1 rounded bg-amber-400 text-black hover:brightness-95">Run Forecast</button>
+            </div>
+          </div>
+          <canvas id="mainChart" height="300"></canvas>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-2xl glass small-chart">
+            <h4 class="font-medium text-slate-700 mb-2">Solar Forecast</h4>
+            <canvas id="solarForecastChart"></canvas>
+          </div>
+          <div class="p-4 rounded-2xl glass small-chart">
+            <h4 class="font-medium text-slate-700 mb-2">Load Forecast</h4>
+            <canvas id="loadForecastChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar Section -->
+      <aside class="space-y-4">
+        <div class="p-4 rounded-2xl glass">
+          <h3 class="font-semibold text-slate-700 mb-2">Realtime Snapshot</h3>
+          <div class="text-sm muted">Voltage: <span id="snapVoltage">-</span> V</div>
+          <div class="text-sm muted">Current: <span id="snapCurrent">-</span> A</div>
+          <div class="text-sm muted">Power: <span id="snapPower">-</span></div>
+          <div class="text-sm muted">Battery SOC: <span id="snapBattery">-</span>%</div>
+        </div>
+
+        <div id="predictiveCard" class="p-4 rounded-2xl pred-positive">
+          <h3 class="font-semibold text-slate-700 mb-2">Predictive Analysis</h3>
+          <div class="text-xs muted mb-2">Horizon: <span id="predHorizonLabel">7</span> days</div>
+          <div class="grid gap-3">
+            <div class="p-3 rounded-lg bg-white/80 flex items-center justify-between">
+              <div>
+                <div class="text-xs muted">Forecasted Generation</div>
+                <div id="predGen" class="text-lg font-bold text-slate-700">-- kWh</div>
+              </div>
+              <div class="text-green-600">☀</div>
+            </div>
+            <div class="p-3 rounded-lg bg-white/80 flex items-center justify-between">
+              <div>
+                <div class="text-xs muted">Forecasted Load</div>
+                <div id="predLoad" class="text-lg font-bold text-slate-700">-- kWh</div>
+              </div>
+              <div class="text-indigo-600">⚡</div>
+            </div>
+            <div id="predNetWrap" class="p-3 rounded-lg bg-white/80">
+              <div class="text-xs muted">Net (Generation − Load)</div>
+              <div id="predNet" class="text-2xl font-extrabold text-slate-800">--</div>
+              <div id="predAdvice" class="text-sm muted mt-2">--</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- ✅ Scripts -->
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

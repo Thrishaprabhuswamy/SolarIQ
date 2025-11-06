@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SolarIQ — Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { font-family: Inter, system-ui, Arial }
+  .muted { color: #6b7280 }
+  .chart-card { height: 500px; padding-bottom: 40px; }
+  .small-chart { height: 300px; }
+  .glass { background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7)); box-shadow: 0 6px 18px rgba(2,6,23,0.05); }
+  canvas { width: 100% !important; height: 100% !important; display: block; }
+</style>
+</head>
+<body class="bg-gradient-to-b from-sky-50 to-indigo-50 min-h-screen p-6">
+
+  <!-- Header -->
+  <header class="max-w-7xl mx-auto flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">SolarIQ — Dashboard</h1>
+      <div class="text-sm muted">
+        Welcome, <%= user.username %> ☀️ <br>
+        Email: <%= user.email %> <br>
+        Location: Lat <%= user.latitude %>, Lon <%= user.longitude %>
+      </div>
+    </div>
+    <a href="/logout" class="text-sm text-indigo-600 hover:underline">Sign out</a>
+  </header>
+
+  <!-- Main content -->
+  <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Charts Section -->
+    <section class="lg:col-span-2 space-y-4">
+
+      <!-- Combined Chart -->
+      <div class="glass p-4 rounded-lg chart-card">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <strong>Real-time Snapshot</strong>
+            <div class="text-sm muted">Historical + Predicted Solar vs Load (from Flask backend)</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-xs muted">Start</label>
+            <input id="predStart" type="date" class="border rounded px-2 py-1 text-sm" />
+            <label class="text-xs muted">End</label>
+            <input id="predEnd" type="date" class="border rounded px-2 py-1 text-sm" />
+            <button id="predApply" class="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition">Apply</button>
+          </div>
+        </div>
+
+        <div id="loadingSpinner" class="hidden text-center py-10 text-indigo-600">
+          <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div>
+          <p class="text-sm mt-2">Fetching data from Flask...</p>
+        </div>
+
+        <canvas id="mergedChart"></canvas>
+      </div>
+
+      <!-- Solar Chart -->
+      <div class="glass p-4 rounded-lg small-chart">
+        <div class="flex justify-between items-center mb-2">
+          <strong>Solar Data (Past + Predicted)</strong>
+        </div>
+        <canvas id="solarChart"></canvas>
+      </div>
+
+      <!-- Load Chart -->
+      <div class="glass p-4 rounded-lg small-chart">
+        <div class="flex justify-between items-center mb-2">
+          <strong>Load Data (Past + Predicted)</strong>
+        </div>
+        <canvas id="loadChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Right side panels -->
+    <aside class="space-y-4">
+      <div class="glass p-4 rounded-lg">
+        <h3 class="font-semibold">Today — Summary</h3>
+        <div class="mt-2 text-sm muted">Live dataset metrics</div>
+        <div class="mt-3 grid gap-2">
+          <div class="p-2 bg-white rounded"><div class="text-xs muted">Solar Produced</div><div id="solarToday" class="text-lg font-bold">-- kWh</div></div>
+          <div class="p-2 bg-white rounded"><div class="text-xs muted">Consumed</div><div id="loadToday" class="text-lg font-bold">-- kWh</div></div>
+          <div class="p-2 bg-white rounded"><div class="text-xs muted">Peak Voltage</div><div id="peakV" class="text-lg font-bold">-- V</div></div>
+          <div class="p-2 bg-white rounded"><div class="text-xs muted">Peak Current</div><div id="peakI" class="text-lg font-bold">-- A</div></div>
+        </div>
+      </div>
+
+      <div class="glass p-4 rounded-lg">
+        <h3 class="font-semibold">Predictive Analysis</h3>
+        <div class="text-sm muted mt-2">Forecasted generation and consumption</div>
+        <div class="mt-3 grid gap-3">
+          <div class="p-3 bg-white rounded shadow-sm">
+            <div class="text-xs muted">Predicted Energy Generated</div>
+            <div id="predictedGenerated" class="text-lg font-bold text-indigo-600">-- kWh</div>
+          </div>
+          <div class="p-3 bg-white rounded shadow-sm">
+            <div class="text-xs muted">Predicted Energy Consumed</div>
+            <div id="predictedConsumed" class="text-lg font-bold text-amber-600">-- kWh</div>
+          </div>
+          <div class="p-3 bg-white rounded shadow-sm">
+            <div class="text-xs muted">Net Prediction (Gen − Load)</div>
+            <div id="netPrediction" class="text-lg font-bold text-green-600">-- kWh</div>
+          </div>
+          <div class="p-3 bg-indigo-50 rounded text-sm text-indigo-800" id="predictionMessage">
+            Awaiting forecast data...
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ======================== -->
+  <!-- 🧠 Dashboard Script -->
+  <!-- ======================== -->
+  <script>
+    const API_BASE = "http://127.0.0.1:5000";
+
+    async function fetchFlaskData(start, end) {
+      try {
+        console.log("🌍 Fetching /history and /predict from Flask...");
+        const histRes = await fetch(`${API_BASE}/history`);
+        if (!histRes.ok) throw new Error("History fetch failed");
+        const history = await histRes.json();
+
+        const formData = new FormData();
+        formData.append("start_date", start);
+        formData.append("end_date", end);
+        const predRes = await fetch(`${API_BASE}/predict`, { method: "POST", body: formData });
+        if (!predRes.ok) throw new Error("Predict fetch failed");
+        const prediction = await predRes.json();
+
+        console.log("✅ Flask data fetched successfully:", { history, prediction });
+        return { history, prediction };
+      } catch (err) {
+        console.error("❌ Fetch error:", err);
+        alert("❌ Could not connect to Flask backend. Check if Flask is running on port 5000.");
+        return { history: [], prediction: [] };
+      }
+    }
+
+    function updatePredictiveBox(solar, load) {
+      if (!solar.length || !load.length) return;
+      const totalGen = solar.reduce((a,b)=>a+b,0).toFixed(2);
+      const totalLoad = load.reduce((a,b)=>a+b,0).toFixed(2);
+      const net = (totalGen - totalLoad).toFixed(2);
+      document.getElementById("predictedGenerated").textContent = `${totalGen} kWh`;
+      document.getElementById("predictedConsumed").textContent = `${totalLoad} kWh`;
+      document.getElementById("netPrediction").textContent = `${net} kWh`;
+
+      const msg = document.getElementById("predictionMessage");
+      if (net > 0) {
+        msg.textContent = "☀️ Surplus energy expected — good time to store or sell!";
+        msg.className = "p-3 bg-green-100 rounded text-sm text-green-800";
+      } else if (net < 0) {
+        msg.textContent = "⚡ Deficit expected — consider optimizing load or battery.";
+        msg.className = "p-3 bg-red-100 rounded text-sm text-red-800";
+      } else {
+        msg.textContent = "✅ Balanced forecast — generation meets demand.";
+        msg.className = "p-3 bg-blue-100 rounded text-sm text-blue-800";
+      }
+    }
+
+    function createDualChart(ctx, label, pastLabels, pastData, predLabels, predData, color) {
+      return new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [...pastLabels, ...predLabels],
+          datasets: [
+            { label: `${label} (Past)`, data: pastData, borderColor: color, fill:false, tension:0.2 },
+            { label: `${label} (Predicted)`, data:[...new Array(pastLabels.length).fill(null), ...predData], borderColor: color, borderDash:[6,4], fill:false, tension:0.2 }
+          ]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:false}} }
+      });
+    }
+
+    function createMergedChart(ctx, hist, pred) {
+      const labels = [...hist.labels, ...pred.labels];
+      return new Chart(ctx, {
+        type:"line",
+        data:{
+          labels,
+          datasets:[
+            { label:"Solar (Past)", data:hist.solar, borderColor:"#f59e0b", fill:false },
+            { label:"Solar (Predicted)", data:[...new Array(hist.labels.length).fill(null), ...pred.solar], borderColor:"#f59e0b", borderDash:[6,4], fill:false },
+            { label:"Load (Past)", data:hist.load, borderColor:"#06b6d4", fill:false },
+            { label:"Load (Predicted)", data:[...new Array(hist.labels.length).fill(null), ...pred.load], borderColor:"#06b6d4", borderDash:[6,4], fill:false }
+          ]
+        },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:false}} }
+      });
+    }
+
+    document.getElementById("predApply").addEventListener("click", async () => {
+      const start = document.getElementById("predStart").value;
+      const end = document.getElementById("predEnd").value;
+      if (!start || !end) return alert("⚠️ Select both start and end dates!");
+
+      const spinner = document.getElementById("loadingSpinner");
+      spinner.classList.remove("hidden");
+
+      try {
+        const { history, prediction } = await fetchFlaskData(start, end);
+        if (!history.length && !prediction.length) throw new Error("No data from Flask");
+
+        const hist = {
+          labels: history.map(h => h.date),
+          solar: history.map(h => h.yhat_solar),
+          load: history.map(h => h.yhat_load)
+        };
+        const pred = {
+          labels: prediction.map(p => p.ds),
+          solar: prediction.map(p => p.yhat_solar),
+          load: prediction.map(p => p.yhat_load)
+        };
+
+        updatePredictiveBox(pred.solar, pred.load);
+
+        if (window.mergedChart) window.mergedChart.destroy();
+        if (window.solarChart) window.solarChart.destroy();
+        if (window.loadChart) window.loadChart.destroy();
+
+        window.mergedChart = createMergedChart(document.getElementById("mergedChart").getContext("2d"), hist, pred);
+        window.solarChart = createDualChart(document.getElementById("solarChart").getContext("2d"), "Solar", hist.labels, hist.solar, pred.labels, pred.solar, "#f59e0b");
+        window.loadChart = createDualChart(document.getElementById("loadChart").getContext("2d"), "Load", hist.labels, hist.load, pred.labels, pred.load, "#06b6d4");
+      } catch (err) {
+        console.error("❌ Dashboard Error:", err);
+        alert("❌ Error fetching or rendering data. Check console for details.");
+      } finally {
+        spinner.classList.add("hidden");
+      }
+    });
+  </script>
+</body>
+</html>

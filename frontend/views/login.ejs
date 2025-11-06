@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOLARIQ — Login</title>
+
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background-color: #001f3f; /* 🌊 Solid navy blue */
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    /* 🌞 Header Section */
+    .header {
+      width: 100%;
+      background-color: #001f3f; /* Navy blue header */
+      color: white;
+      text-align: center;
+      padding: 50px 10px 30px 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: 1px;
+    }
+
+    .header h2 {
+      font-size: 1rem;
+      font-weight: 400;
+      margin-top: 8px;
+      opacity: 0.9;
+    }
+
+    /* 🔐 Login Box */
+    .container {
+      background: white;
+      margin-top: 40px;
+      padding: 35px 30px;
+      border-radius: 15px;
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25);
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .container h2 {
+      color: #001f3f;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      transition: border 0.3s;
+    }
+
+    input:focus {
+      border-color: #001f3f;
+      outline: none;
+      box-shadow: 0 0 6px rgba(0, 31, 63, 0.3);
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #001f3f; /* Navy blue button */
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: transform 0.2s ease, background 0.3s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      background-color: #002b66; /* Slightly lighter hover navy */
+    }
+
+    p {
+      margin-top: 15px;
+      color: #555;
+      font-size: 0.9rem;
+    }
+
+    a {
+      color: #001f3f;
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.3s;
+    }
+
+    a:hover {
+      color: #002b66;
+      text-decoration: underline;
+    }
+
+    /* 📱 Responsive Design */
+    @media (max-width: 500px) {
+      .header h1 {
+        font-size: 2rem;
+      }
+
+      .header h2 {
+        font-size: 0.9rem;
+      }
+
+      .container {
+        padding: 25px 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 🌞 Navy Blue Header -->
+  <div class="header">
+    <h1>SOLARIQ</h1>
+    <h2>"Sunlight, Upgraded"</h2>
+  </div>
+
+  <!-- 🔐 White Login Box -->
+  <div class="container">
+    <h2>Login</h2>
+    <form action="/login" method="POST">
+      <input type="text" name="username" placeholder="Username" required />
+      <input type="password" name="password" placeholder="Password" required />
+      <button type="submit">Login</button>
+    </form>
+
+    <p>Don’t have an account? <a href="/signup">Sign up</a></p>
+  </div>
+</body>
+</html>

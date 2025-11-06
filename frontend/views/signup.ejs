@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SolarIQ — Sign Up</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6, #9333ea);
+      font-family: "Poppins", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: #333;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    input:focus, button:focus {
+      outline: none;
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+    }
+
+    @media (max-width: 640px) {
+      .signup-container {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="signup-container flex flex-col md:flex-row bg-white/10 rounded-2xl overflow-hidden w-full max-w-4xl glass">
+    
+    <!-- Left Panel -->
+    <div class="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 text-white p-10">
+      <h1 class="text-3xl font-bold mb-2">Welcome to <span class="text-yellow-300">SolarIQ ☀️</span></h1>
+      <p class="text-sm opacity-90 mb-6 text-center">Monitor, predict, and optimize your solar energy system with real-time insights.</p>
+      <img src="https://cdn-icons-png.flaticon.com/512/869/869869.png" class="w-32 h-32 animate-bounce" alt="Solar Icon">
+    </div>
+
+    <!-- Right Panel (Form) -->
+    <div class="w-full md:w-1/2 bg-white p-8 md:p-10">
+      <h2 class="text-2xl font-bold text-center text-indigo-700 mb-6">Create Your Account</h2>
+      
+      <form action="/signup" method="POST" class="space-y-4">
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Username</label>
+          <input type="text" name="username" placeholder="Enter username"
+            class="w-full mt-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400" required />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Email</label>
+          <input type="email" name="email" placeholder="Enter email address"
+            class="w-full mt-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400" required />
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Password</label>
+            <input type="password" name="password" placeholder="Enter password"
+              class="w-full mt-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400" required />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <input type="password" name="confirmPassword" placeholder="Confirm password"
+              class="w-full mt-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400" required />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Latitude</label>
+            <input type="text" name="latitude" placeholder="e.g. 12.9716"
+              class="w-full mt-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400" required />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Longitude</label>
+            <input type="text" name="longitude" placeholder="e.g. 77.5946"
+              class="w-full mt-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400" required />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Average Power Consumption (kW)</label>
+          <input type="number" name="avg_power" step="0.01" placeholder="e.g. 5.5"
+            class="w-full mt-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400" required />
+        </div>
+
+        <button type="submit"
+          class="w-full mt-4 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-500 text-white py-2 rounded-lg font-semibold shadow-md hover:opacity-90 transition">
+          Sign Up
+        </button>
+      </form>
+
+      <!-- ✅ Login Redirect -->
+      <p class="text-center text-sm text-gray-600 mt-5">
+        Already have an account?
+        <a href="/login" class="text-indigo-600 font-semibold hover:underline transition-all duration-300">Login</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Optional fade animation for redirect -->
+  <script>
+    const loginLink = document.querySelector('a[href="/login"]');
+    loginLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.body.style.opacity = '0';
+      setTimeout(() => (window.location.href = '/login'), 300);
+    });
+  </script>
+</body>
+</html>
