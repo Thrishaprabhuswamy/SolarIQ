@@ -20,8 +20,9 @@
     /* 🌞 Header Section */
     .header {
       width: 100%;
-      background-color: #001f3f; /* Navy blue header */
-      color: white;
+      /* navy-blue header background */
+      background: linear-gradient(90deg,#001f3f 0%, #001a35 100%);
+      color: #ffffff; /* white text for contrast */
       text-align: center;
       padding: 50px 10px 30px 10px;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -32,13 +33,17 @@
       font-weight: 700;
       margin: 0;
       letter-spacing: 1px;
+      /* lemon-yellow heading */
+      color: #ffffff; /* heading text: white */
     }
 
     .header h2 {
       font-size: 1rem;
       font-weight: 400;
       margin-top: 8px;
-      opacity: 0.9;
+      opacity: 0.95;
+      /* lemon-yellow subheading */
+      color: #065f46;
     }
 
     /* 🔐 Login Box */
@@ -54,7 +59,7 @@
     }
 
     .container h2 {
-      color: #001f3f;
+      color: #FFD54A; /* lemon-yellow form heading */
       margin-bottom: 20px;
       font-weight: 600;
     }
@@ -128,16 +133,35 @@
   </style>
 </head>
 
-<body>
-  <!-- 🌞 Navy Blue Header -->
-  <div class="header">
-    <h1>SOLARIQ</h1>
-    <h2>"Sunlight, Upgraded"</h2>
+<body style="background: radial-gradient(circle at 10% 10%, #fffde7 0%, #fff9c4 30%, #fff59d 60%, #fff176 100%); min-height:100vh;">
+  <!-- 🌞 Navy Blue Header with Sun Logo -->
+  <div class="header" style="display:flex;align-items:center;gap:14px;justify-content:center;padding:28px 10px 20px;">
+    <!-- inline sun SVG -->
+    <div aria-hidden="true" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="56" height="56">
+        <circle cx="12" cy="12" r="4" fill="#FFD54A"/>
+        <g stroke="#FFD54A" stroke-width="1.4" stroke-linecap="round">
+          <line x1="12" y1="1.5" x2="12" y2="4.5"/>
+          <line x1="12" y1="19.5" x2="12" y2="22.5"/>
+          <line x1="1.5" y1="12" x2="4.5" y2="12"/>
+          <line x1="19.5" y1="12" x2="22.5" y2="12"/>
+          <line x1="4.2" y1="4.2" x2="6.2" y2="6.2"/>
+          <line x1="17.8" y1="17.8" x2="19.8" y2="19.8"/>
+          <line x1="4.2" y1="19.8" x2="6.2" y2="17.8"/>
+          <line x1="17.8" y1="6.2" x2="19.8" y2="4.2"/>
+        </g>
+      </svg>
+    </div>
+
+    <div style="text-align:center;">
+      <h1 style="margin:0;">SOLARIQ</h1>
+      <h2 style="margin:4px 0 0 0;font-weight:400;color:white;">"Sunlight, Upgraded"</h2>
+    </div>
   </div>
 
   <!-- 🔐 White Login Box -->
   <div class="container">
-    <h2>Login</h2>
+    <h2 style="color: #001a35;">Login</h2>
     <form action="/login" method="POST">
       <input type="text" name="username" placeholder="Username" required />
       <input type="password" name="password" placeholder="Password" required />

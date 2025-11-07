@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Dashboard</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Solar Dashboard</h1>
+        
+        <div class="date-range">
+            <label for="start-date">Start Date:</label>
+            <input type="date" id="start-date" name="start-date">
+            
+            <label for="end-date">End Date:</label>
+            <input type="date" id="end-date" name="end-date">
+            
+            <button id="fetch-data">Fetch Data</button>
+        </div>
+
+        <div class="graphs">
+            <canvas id="solar-graph"></canvas>
+            <canvas id="load-graph"></canvas>
+            <canvas id="combined-graph"></canvas>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/charts.js"></script>
+</body>
+</html>

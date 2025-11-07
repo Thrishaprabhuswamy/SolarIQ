@@ -3,11 +3,10 @@ from flask_cors import CORS
 import pandas as pd
 import numpy as np
 import sqlite3
-import json
-import requests
-import os
 from datetime import datetime, timedelta
 from prophet import Prophet
+import os
+import requests
 import pickle
 
 app = Flask(__name__)
@@ -109,27 +108,21 @@ def nasa_data():
 
     nasa_url = (
         f"https://power.larc.nasa.gov/api/temporal/daily/point?"
-        f"parameters=ALLSKY_SFC_SW_DWN&community=RE"
+        f"parameters=ALLSKY_SFC_SW_DWN,T2M,WIND_SPEED&community=RE"
         f"&longitude={lon}&latitude={lat}&start={start}&end={end}&format=JSON"
     )
     try:
-        resp = requests.get(nasa_url, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-
-        # POWER API daily data path: data['properties']['parameter']['ALLSKY_SFC_SW_DWN']
-        params = data.get("properties", {}).get("parameter", {})
-        irradiance = params.get("ALLSKY_SFC_SW_DWN", {})
-
-        # convert YYYYMMDD -> YYYY-MM-DD and return list of {date, solar_irradiance}
-        out = []
-        for k, v in irradiance.items():
-            if v is None:
-                continue
-            yyyy = f"{k[0:4]}-{k[4:6]}-{k[6:8]}"
-            out.append({"date": yyyy, "solar_irradiance": float(v)})
-        out.sort(key=lambda x: x["date"])
-        return jsonify({"status": "success", "data": out})
+        res = requests.get(nasa_url)
+        res.raise_for_status()
+        data = res.json()
+        params = data["properties"]["parameter"]
+        df = pd.DataFrame({
+            "date": list(params["ALLSKY_SFC_SW_DWN"].keys()),
+            "solar_irradiance": list(params["ALLSKY_SFC_SW_DWN"].values()),
+            "temperature": list(params["T2M"].values()),
+            "wind_speed": list(params["WIND_SPEED"].values())
+        })
+        return jsonify({"status": "success", "data": df.to_dict(orient="records")})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -250,7 +243,6 @@ def predict():
         print("❌ Predict error:", traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
 # ============================================
 # 🧪 Root Health
 # ============================================
@@ -260,31 +252,6 @@ def home():
         "message": "✅ SolarIQ Flask backend active",
         "routes": ["/history", "/today_status", "/solar_status", "/predict", "/nasa_data"]
     })
-
-# ============================================
-# 📊 LOAD HISTORY
-# ============================================
-@app.route("/load_history")
-def load_history():
-    """
-    Return synthetic load history for a requested date range.
-    Query params:
-      - start (YYYY-MM-DD)
-      - end   (YYYY-MM-DD)
-    """
-    start = request.args.get("start")
-    end = request.args.get("end")
-    if not start or not end:
-        return jsonify({"status": "error", "message": "Missing start or end date"}), 400
-    try:
-        date_rng = pd.date_range(start=start, end=end)
-        df = pd.DataFrame({
-            "date": date_rng.strftime("%Y-%m-%d"),
-            "load": np.random.uniform(15, 35, len(date_rng)).round(2)
-        })
-        return jsonify({"status": "success", "data": df.to_dict(orient="records")})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)

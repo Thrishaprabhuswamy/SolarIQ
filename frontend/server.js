@@ -1,170 +1,138 @@
-// ============================
-// 🌞 SOLARIQ Node Backend (Frontend Server)
-// ============================
 const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
 const bodyParser = require("body-parser");
-const axios = require("axios"); // ✅ For calling Flask API
+const axios = require("axios");
 const User = require("./models/user");
 
 const app = express();
 
-// ============================
-// ⚙️ MongoDB Connection
-// ============================
+// MongoDB setup
 mongoose.connect("mongodb://127.0.0.1:27017/solarMonitor");
+mongoose.connection.on("connected", () => console.log("✅ MongoDB connected"));
 
-mongoose.connection.on("connected", () => {
-  console.log("✅ MongoDB connected successfully");
-});
-
-mongoose.connection.on("error", (err) => {
-  console.error("❌ MongoDB connection error:", err);
-});
-
-mongoose.connection.on("disconnected", () => {
-  console.warn("⚠️ MongoDB disconnected");
-});
-
-
-// ============================
-// 🧩 Middleware
-// ============================
+// Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.set("view engine", "ejs");
-
 app.use(
   session({
-    secret: "solar_secret_key",
+    secret: "solar_secret",
     resave: false,
     saveUninitialized: false,
   })
 );
 
-// ✅ Auth guard middleware
-function isAuthenticated(req, res, next) {
-  if (!req.session.user) {
-    console.log("⚠️ Unauthorized access attempt — redirecting to login");
-    return res.redirect("/login");
-  }
+// accept JSON from frontend update requests
+app.use(express.json());
+
+// Authentication guard
+function isAuth(req, res, next) {
+  if (!req.session.user) return res.redirect("/login");
   next();
 }
 
-// ============================
-// 🏠 Routes
-// ============================
-
-// Root → redirect to login
+// Routes
 app.get("/", (req, res) => res.redirect("/login"));
-
-// Login page
 app.get("/login", (req, res) => res.render("login"));
-
-// Signup page
 app.get("/signup", (req, res) => res.render("signup"));
 
-// ============================
-// 📝 Signup Route
-// ============================
+// Signup
 app.post("/signup", async (req, res) => {
   try {
     const { username, email, password, confirmPassword, latitude, longitude, avg_power } = req.body;
+    if (!username || !email || !password || password !== confirmPassword)
+      return res.send("⚠️ Invalid or missing fields.");
 
-    // Basic validation
-    if (!username || !email || !password || !confirmPassword || !latitude || !longitude || !avg_power)
-      return res.send("⚠️ Please fill all fields!");
+    const exists = await User.findOne({ email });
+    if (exists) return res.send("⚠️ Email already registered.");
 
-    if (password !== confirmPassword)
-      return res.send("⚠️ Passwords do not match!");
-
-    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-    if (existingUser)
-      return res.send("⚠️ Username or Email already exists!");
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
-      username,
-      email,
-      password: hashedPassword,
-      latitude,
-      longitude,
-      avg_power,
-    });
-
+    const hash = await bcrypt.hash(password, 10);
+    const newUser = new User({ username, email, password: hash, latitude, longitude, avg_power });
     await newUser.save();
-    console.log(`✅ User registered: ${username}`);
+
     res.redirect("/login");
-  } catch (error) {
-    console.error("❌ Signup error:", error);
-    res.status(500).send("Internal Server Error");
+  } catch (e) {
+    console.error("❌ Signup error:", e);
+    res.send("Error during signup.");
   }
 });
 
-// ============================
-// 🔐 Login Route
-// ============================
+// Login
 app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ username });
+  if (!user) return res.send("⚠️ User not found.");
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) return res.send("⚠️ Wrong password.");
+  req.session.user = user;
+  res.redirect("/dashboard");
+});
+
+// Dashboard
+app.get("/dashboard", isAuth, async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    const [todayRes, historyRes] = await Promise.all([
+      axios.get("http://127.0.0.1:5000/today_status"),
+      axios.get("http://127.0.0.1:5000/history"),
+    ]);
 
-    if (!user) return res.send("⚠️ No account found!");
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.send("⚠️ Incorrect password!");
-
-    req.session.user = user;
-    console.log(`🔐 ${username} logged in successfully`);
-    res.redirect("/dashboard");
-  } catch (error) {
-    console.error("❌ Login error:", error);
-    res.status(500).send("Internal Server Error");
+    res.render("dashboard", {
+      user: req.session.user,
+      avg_power: req.session.user ? req.session.user.avg_power : 0, // <-- pass avg_power explicitly
+      todayData: todayRes.data || null,
+      historyData: historyRes.data || [],
+      forecastData: [], // keep frontend responsible for prediction fetch
+    });
+  } catch (err) {
+    console.error("❌ Flask connection error:", err.message);
+    res.render("dashboard", {
+      user: req.session.user,
+      avg_power: req.session.user ? req.session.user.avg_power : 0, // <-- keep available on error path
+      todayData: null,
+      historyData: [],
+      forecastData: [], // ✅ always defined
+    });
   }
 });
 
-// ============================
-// 📊 Dashboard Route (Protected)
-// ============================
-app.get("/dashboard", isAuthenticated, async (req, res) => {
-  try {
-    // ✅ Fetch solar data from Flask backend
-    const flaskResponse = await axios.get("http://127.0.0.1:5000/history");
+// Logout
+app.get("/logout", (req, res) => req.session.destroy(() => res.redirect("/login")));
 
-    const solarData = flaskResponse.data;
-
-    // Render dashboard with both user info + solar data
-    res.render("dashboard", { user: req.session.user, solarData });
-  } catch (error) {
-    console.error("⚠️ Could not connect to Flask backend:", error.message);
-    res.render("dashboard", { user: req.session.user, solarData: null });
-  }
-});
-
-// ============================
-// 👩‍💼 Admin Route (View All Users)
-// ============================
-app.get("/users", async (req, res) => {
-  try {
-    const users = await User.find({}, "-password"); // exclude password field
-    res.render("users", { users });
-  } catch (error) {
-    console.error("❌ Error fetching users:", error);
-    res.status(500).send("Error retrieving user list");
-  }
-});
-
-// ============================
-// 🚪 Logout Route
-// ============================
-app.get("/logout", (req, res) => {
-  req.session.destroy(() => res.redirect("/login"));
-});
-
-// ============================
-// 🚀 Start Node Server
-// ============================
+// Start server
 const PORT = 3000;
-app.listen(PORT, () => console.log(`🚀 Node frontend running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Node frontend on http://localhost:${PORT}`));
+
+// Profile update endpoint (edit lat, lon, avg_power)
+app.post("/profile/update", isAuth, async (req, res) => {
+  try {
+    const { latitude, longitude, avg_power } = req.body;
+    const userId = req.session.user._id;
+
+    // validate basic types
+    const lat = latitude !== undefined ? Number(latitude) : undefined;
+    const lon = longitude !== undefined ? Number(longitude) : undefined;
+    const avg = avg_power !== undefined ? Number(avg_power) : undefined;
+
+    const update = {};
+    if (!Number.isNaN(lat)) update.latitude = lat;
+    if (!Number.isNaN(lon)) update.longitude = lon;
+    if (!Number.isNaN(avg)) update.avg_power = avg;
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ status: "error", message: "No valid fields provided" });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, update, { new: true }).lean();
+    if (!user) return res.status(404).json({ status: "error", message: "User not found" });
+
+    // update session copy
+    req.session.user = user;
+
+    return res.json({ status: "success", user });
+  } catch (err) {
+    console.error("Profile update error:", err);
+    return res.status(500).json({ status: "error", message: "Server error" });
+  }
+});

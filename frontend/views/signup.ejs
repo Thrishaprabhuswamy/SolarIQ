@@ -10,7 +10,7 @@
 
   <style>
     body {
-      background: linear-gradient(135deg, #1e3a8a, #3b82f6, #9333ea);
+      background: radial-gradient(circle at 10% 10%, #fffde7 0%, #fff9c4 30%, #fff59d 60%, #fff176 100%);
       font-family: "Poppins", sans-serif;
       min-height: 100vh;
       display: flex;
@@ -37,14 +37,32 @@
         flex-direction: column;
       }
     }
+
+    /* ensure headings use lemon yellow for visibility on your theme */
+    .header h1 {
+      color: #064e3b;
+    }
+    /* make the tagline "Sunlight, Upgraded" white */
+    .header h2 {
+      color: #ffffff;
+    }
+    /* make signup form background lemon-yellow and readable */
+    .container {
+      background: linear-gradient(90deg,#fff59d 0%, #fff176 100%);
+      color: #064e3b;
+      box-shadow: 0 6px 25px rgba(0,0,0,0.12);
+    }
+    .container h2 {
+      color: #064e3b;
+    }
   </style>
 </head>
 
-<body>
+<body style="background: radial-gradient(circle at 10% 10%, #fffde7 0%, #fff9c4 30%, #fff59d 60%, #fff176 100%); min-height:100vh;">
   <div class="signup-container flex flex-col md:flex-row bg-white/10 rounded-2xl overflow-hidden w-full max-w-4xl glass">
     
     <!-- Left Panel -->
-    <div class="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 text-white p-10">
+    <div class="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 text-white p-10" style="background-color: navy;">
       <h1 class="text-3xl font-bold mb-2">Welcome to <span class="text-yellow-300">SolarIQ ☀️</span></h1>
       <p class="text-sm opacity-90 mb-6 text-center">Monitor, predict, and optimize your solar energy system with real-time insights.</p>
       <img src="https://cdn-icons-png.flaticon.com/512/869/869869.png" class="w-32 h-32 animate-bounce" alt="Solar Icon">

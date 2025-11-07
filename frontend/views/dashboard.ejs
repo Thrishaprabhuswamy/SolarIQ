@@ -4,236 +4,529 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>SolarIQ — Dashboard</title>
+
+<!-- ✅ TailwindCSS and Chart.js -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- add site-wide stylesheet (green & yellow theme) -->
+<link rel="stylesheet" href="/css/styles.css" />
+
 <style>
-  body { font-family: Inter, system-ui, Arial }
-  .muted { color: #6b7280 }
-  .chart-card { height: 500px; padding-bottom: 40px; }
-  .small-chart { height: 300px; }
-  .glass { background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7)); box-shadow: 0 6px 18px rgba(2,6,23,0.05); }
+  /* keep minimal local rules but rely on external stylesheet for theme */
+  body { font-family: Inter, system-ui, Arial; }
+  .chart-card, .small-chart { height: 400px; }  /* ensure canvas visible height */
   canvas { width: 100% !important; height: 100% !important; display: block; }
 </style>
 </head>
-<body class="bg-gradient-to-b from-sky-50 to-indigo-50 min-h-screen p-6">
+<body class="bg-gradient-to-b from-sky-50 to-indigo-50 min-h-screen">
+<script>
+  // expose current user's avg_power to client JS
+  window.CURRENT_USER = {
+    avg_power: <%= JSON.stringify(typeof avg_power !== "undefined" ? avg_power : (user ? user.avg_power : 0)) %>
+  };
+</script>
 
-  <!-- Header -->
-  <header class="max-w-7xl mx-auto flex justify-between items-center mb-6">
-    <div>
-      <h1 class="text-2xl font-bold">SolarIQ — Dashboard</h1>
-      <div class="text-sm muted">
-        Welcome, <%= user.username %> ☀️ <br>
-        Email: <%= user.email %> <br>
-        Location: Lat <%= user.latitude %>, Lon <%= user.longitude %>
+<!-- NAVBAR (new) -->
+<nav class="bg-gradient-to-r from-sky-600 to-indigo-600 text-white sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <a href="/dashboard" class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-md bg-white/20 flex items-center justify-center">
+          <!-- simple sun / panel icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4M7 12a5 5 0 1 0 10 0 5 5 0 0 0-10 0z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="font-semibold text-lg tracking-tight">SolarIQ</span>
+      </a>
+
+      <div class="hidden md:flex items-center gap-6 text-sm text-white/90 ml-4">
+        <a href="#" class="hover:underline">Overview</a>
+        <a href="#" class="hover:underline">Analytics</a>
+        <a href="#" class="hover:underline">Reports</a>
       </div>
     </div>
-    <a href="/logout" class="text-sm text-indigo-600 hover:underline">Sign out</a>
-  </header>
 
-  <!-- Main content -->
-  <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Charts Section -->
-    <section class="lg:col-span-2 space-y-4">
-
-      <!-- Combined Chart -->
-      <div class="glass p-4 rounded-lg chart-card">
-        <div class="flex justify-between items-center mb-3">
-          <div>
-            <strong>Real-time Snapshot</strong>
-            <div class="text-sm muted">Historical + Predicted Solar vs Load (from Flask backend)</div>
-          </div>
-          <div class="flex items-center gap-3">
-            <label class="text-xs muted">Start</label>
-            <input id="predStart" type="date" class="border rounded px-2 py-1 text-sm" />
-            <label class="text-xs muted">End</label>
-            <input id="predEnd" type="date" class="border rounded px-2 py-1 text-sm" />
-            <button id="predApply" class="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition">Apply</button>
-          </div>
-        </div>
-
-        <div id="loadingSpinner" class="hidden text-center py-10 text-indigo-600">
-          <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto"></div>
-          <p class="text-sm mt-2">Fetching data from Flask...</p>
-        </div>
-
-        <canvas id="mergedChart"></canvas>
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex items-center bg-white/10 px-2 py-1 rounded">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <input type="search" placeholder="Search..." class="ml-2 bg-transparent placeholder-white/80 outline-none text-sm w-40"/>
       </div>
 
-      <!-- Solar Chart -->
-      <div class="glass p-4 rounded-lg small-chart">
-        <div class="flex justify-between items-center mb-2">
-          <strong>Solar Data (Past + Predicted)</strong>
-        </div>
-        <canvas id="solarChart"></canvas>
+      <!-- profile avatar button -->
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:block text-sm text-white/95 mr-2">Hi, <strong><%= user ? user.username : 'Guest' %></strong></div>
+        <button id="profileBtn" aria-haspopup="true" aria-controls="profileDrawer" aria-expanded="false"
+          class="ml-2 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center ring-1 ring-white/30 hover:bg-white/30 transition"
+          title="Open profile">
+          <% if (user && user.username) { %>
+            <span class="text-sm font-semibold text-white">
+              <%= (user.username || 'U').split(' ').map(s=>s[0]).slice(0,2).join('') %>
+            </span>
+          <% } else { %>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="7" r="4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          <% } %>
+        </button>
+      </div>
+     </div>
+   </div>
+ </nav>
+ 
+<!-- Profile drawer + overlay -->
+<div id="profileOverlay" class="hidden fixed inset-0 bg-black/40 z-40"></div>
+<aside id="profileDrawer" class="fixed right-0 top-0 h-full w-80 bg-white z-50 transform translate-x-full shadow-xl transition-transform">
+  <div class="p-4 border-b flex items-center justify-between">
+    <div>
+      <div class="text-xs muted">Profile</div>
+      <div class="font-semibold text-sky-800"><%= user ? user.username : 'Guest' %></div>
+    </div>
+    <button id="profileClose" aria-label="Close profile" class="text-gray-500 hover:text-gray-700">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M6 18L18 6M6 6l12 12" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="p-4 space-y-4">
+    <!-- editable fields -->
+    <form id="profileForm" class="space-y-3">
+      <div>
+        <label class="text-xs muted">Latitude</label>
+        <input id="latInput" name="latitude" type="number" step="0.0001" class="w-full p-2 border rounded" value="<%= user && user.latitude ? user.latitude : '' %>" />
       </div>
 
-      <!-- Load Chart -->
-      <div class="glass p-4 rounded-lg small-chart">
-        <div class="flex justify-between items-center mb-2">
-          <strong>Load Data (Past + Predicted)</strong>
-        </div>
-        <canvas id="loadChart"></canvas>
-      </div>
-    </section>
-
-    <!-- Right side panels -->
-    <aside class="space-y-4">
-      <div class="glass p-4 rounded-lg">
-        <h3 class="font-semibold">Today — Summary</h3>
-        <div class="mt-2 text-sm muted">Live dataset metrics</div>
-        <div class="mt-3 grid gap-2">
-          <div class="p-2 bg-white rounded"><div class="text-xs muted">Solar Produced</div><div id="solarToday" class="text-lg font-bold">-- kWh</div></div>
-          <div class="p-2 bg-white rounded"><div class="text-xs muted">Consumed</div><div id="loadToday" class="text-lg font-bold">-- kWh</div></div>
-          <div class="p-2 bg-white rounded"><div class="text-xs muted">Peak Voltage</div><div id="peakV" class="text-lg font-bold">-- V</div></div>
-          <div class="p-2 bg-white rounded"><div class="text-xs muted">Peak Current</div><div id="peakI" class="text-lg font-bold">-- A</div></div>
-        </div>
+      <div>
+        <label class="text-xs muted">Longitude</label>
+        <input id="lonInput" name="longitude" type="number" step="0.0001" class="w-full p-2 border rounded" value="<%= user && user.longitude ? user.longitude : '' %>" />
       </div>
 
-      <div class="glass p-4 rounded-lg">
-        <h3 class="font-semibold">Predictive Analysis</h3>
-        <div class="text-sm muted mt-2">Forecasted generation and consumption</div>
-        <div class="mt-3 grid gap-3">
-          <div class="p-3 bg-white rounded shadow-sm">
-            <div class="text-xs muted">Predicted Energy Generated</div>
-            <div id="predictedGenerated" class="text-lg font-bold text-indigo-600">-- kWh</div>
-          </div>
-          <div class="p-3 bg-white rounded shadow-sm">
-            <div class="text-xs muted">Predicted Energy Consumed</div>
-            <div id="predictedConsumed" class="text-lg font-bold text-amber-600">-- kWh</div>
-          </div>
-          <div class="p-3 bg-white rounded shadow-sm">
-            <div class="text-xs muted">Net Prediction (Gen − Load)</div>
-            <div id="netPrediction" class="text-lg font-bold text-green-600">-- kWh</div>
-          </div>
-          <div class="p-3 bg-indigo-50 rounded text-sm text-indigo-800" id="predictionMessage">
-            Awaiting forecast data...
-          </div>
+      <div>
+        <label class="text-xs muted">Avg. power (kW)</label>
+        <input id="avgPowerInput" name="avg_power" type="number" step="0.01" class="w-full p-2 border rounded" value="<%= user && user.avg_power ? user.avg_power : '' %>" />
+      </div>
+
+      <div class="flex gap-2">
+        <button id="saveProfileBtn" type="button" class="flex-1 px-3 py-2 bg-sky-600 text-white rounded-md">Save</button>
+        <button id="resetProfileBtn" type="button" class="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-md">Reset</button>
+      </div>
+
+      <div id="profileMsg" class="text-sm muted"></div>
+    </form>
+
+    <div class="pt-2 border-t">
+      <form action="/logout" method="get">
+        <button type="submit" class="w-full px-3 py-2 bg-sky-600 text-white rounded-md">Logout</button>
+      </form>
+    </div>
+  </div>
+</aside>
+
+<!-- small hero / header -->
+<header class="max-w-7xl mx-auto px-4 py-6">
+  <div class="bg-white/60 glass p-4 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-sky-900">Dashboard</h1>
+      <p class="text-sm muted mt-1">Visualize satellite solar data, load and forecasts. Select a date range to refresh charts.</p>
+    </div>
+    <div class="text-right">
+      <div class="text-xs muted">Avg. Power</div>
+      <div class="text-lg font-semibold"><%= user && user.avg_power ? user.avg_power : '—' %> <span class="text-sm muted">kW</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- main (keeps existing layout) -->
+<main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 px-4 pb-12">
+  <!-- Left Side (Charts) -->
+  <section class="lg:col-span-2 space-y-4">
+    <div class="glass p-4 rounded-lg chart-card">
+      <strong>Solar Energy Produced vs Consumed</strong>
+      <canvas id="mergedChart"></canvas>
+    </div>
+
+    <div class="glass p-4 rounded-lg small-chart">
+      <strong>Solar Energy Produced (Past + Predicted)</strong>
+      <canvas id="solarChart"></canvas>
+    </div>
+
+    <div class="glass p-4 rounded-lg small-chart">
+      <strong>Solar Energy Consumed (Past + Predicted)</strong>
+      <canvas id="loadChart"></canvas>
+    </div>
+  </section>
+
+  <!-- Right Side (Summary) -->
+  <aside class="space-y-4">
+    <div class="glass p-4 rounded-lg">
+      <h3 class="font-semibold">Today — Summary</h3>
+      <div class="mt-3 grid gap-2">
+        <div class="p-2 bg-white rounded">
+          <div class="text-xs muted">Solar (today)</div>
+          <div id="solarToday" class="font-medium">-- kWh</div>
+        </div>
+        <div class="p-2 bg-white rounded">
+          <div class="text-xs muted">Load (today)</div>
+          <div id="loadToday" class="font-medium">-- kWh</div>
+        </div>
+        <div class="p-2 bg-white rounded">
+          <div class="text-xs muted">Peak V</div>
+          <div id="peakV" class="font-medium">-- V</div>
+        </div>
+        <div class="p-2 bg-white rounded">
+          <div class="text-xs muted">Peak I</div>
+          <div id="peakI" class="font-medium">-- A</div>
         </div>
       </div>
-    </aside>
-  </main>
+    </div>
 
-  <!-- ======================== -->
-  <!-- 🧠 Dashboard Script -->
-  <!-- ======================== -->
-  <script>
-    const API_BASE = "http://127.0.0.1:5000";
+    <div class="glass p-4 rounded-lg">
+      <h3 class="font-semibold">Select Date Range</h3>
+      <div class="mt-3 space-y-2">
+        <div>
+          <label class="text-sm muted block">Start Date</label>
+          <input id="startDateInput" type="date" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="text-sm muted block">End Date</label>
+          <input id="endDateInput" type="date" class="w-full p-2 border rounded" />
+        </div>
+        <div class="flex gap-2">
+          <button id="loadRangeBtn" class="px-3 py-2 bg-indigo-600 text-white rounded">Load Range</button>
+          <select id="horizonSelect" class="p-2 border rounded">
+            <option value="7">Predict +7 days</option>
+            <option value="14">Predict +14 days</option>
+            <option value="30">Predict +30 days</option>
+          </select>
+        </div>
+      </div>
+    </div>
 
-    async function fetchFlaskData(start, end) {
-      try {
-        console.log("🌍 Fetching /history and /predict from Flask...");
-        const histRes = await fetch(`${API_BASE}/history`);
-        if (!histRes.ok) throw new Error("History fetch failed");
-        const history = await histRes.json();
+    <!-- Predictive analysis box: energy consumed, solar used, savings -->
+    <div class="glass p-4 rounded-lg">
+      <h3 class="font-semibold">Predictive Analysis</h3>
+      <div id="predictionMessage" class="mt-2 p-2 bg-gray-100 rounded text-sm muted">Forecast summary will appear here.</div>
 
-        const formData = new FormData();
-        formData.append("start_date", start);
-        formData.append("end_date", end);
-        const predRes = await fetch(`${API_BASE}/predict`, { method: "POST", body: formData });
-        if (!predRes.ok) throw new Error("Predict fetch failed");
-        const prediction = await predRes.json();
+      <!-- Tariff selector -->
+      <div class="mt-3 flex items-center gap-3">
+        <label class="text-sm muted">Location type</label>
+        <select id="tariffSelect" class="p-2 border rounded">
+          <option value="domestic">House — ₹5.80 /kWh</option>
+          <option value="institution">Institution — ₹6.30 /kWh</option>
+          <option value="industry">Industry — ₹7.50 /kWh</option>
+        </select>
+        <div id="tariffDisplay" class="text-sm muted">Using tariff: <span id="tariffValue">₹ 5.80 /kWh</span></div>
+      </div>
 
-        console.log("✅ Flask data fetched successfully:", { history, prediction });
-        return { history, prediction };
-      } catch (err) {
-        console.error("❌ Fetch error:", err);
-        alert("❌ Could not connect to Flask backend. Check if Flask is running on port 5000.");
-        return { history: [], prediction: [] };
-      }
-    }
+      <div class="mt-4 grid grid-cols-1 gap-3">
+        <div class="p-3 bg-white rounded">
+          <div class="text-xs muted">Electrical energy (selected period)</div>
+          <div id="energyTotal" class="font-medium">-- kWh</div>
+          <div class="text-xs muted">(based on average power from your profile)</div>
+        </div>
 
-    function updatePredictiveBox(solar, load) {
-      if (!solar.length || !load.length) return;
-      const totalGen = solar.reduce((a,b)=>a+b,0).toFixed(2);
-      const totalLoad = load.reduce((a,b)=>a+b,0).toFixed(2);
-      const net = (totalGen - totalLoad).toFixed(2);
-      document.getElementById("predictedGenerated").textContent = `${totalGen} kWh`;
-      document.getElementById("predictedConsumed").textContent = `${totalLoad} kWh`;
-      document.getElementById("netPrediction").textContent = `${net} kWh`;
+        <div class="p-3 bg-white rounded">
+          <div class="text-xs muted">Solar energy consumed (selected period)</div>
+          <div id="solarTotal" class="font-medium">-- kWh</div>
+        </div>
 
+        <div class="p-3 bg-white rounded">
+          <div class="text-xs muted">Estimated savings (from solar)</div>
+          <div id="savingsTotal" class="font-medium">-- ₹</div>
+        </div>
+      </div>
+
+      <div class="text-xs muted mt-2">Change location type to update tariff used for savings calculation.</div>
+    </div>
+  </aside>
+</main>
+
+<!-- ======================== -->
+<!-- 🧠 Working Script Below -->
+<!-- ======================== -->
+<script>
+(async function () {
+  const DEFAULT_HORIZON = 7; // days to predict
+  // remove fixed DEFAULT_ELEC_RATE; use tariffs map and selected tariff instead
+  const TARIFFS = { domestic: 5.8, institution: 6.3, industry: 7.5 };
+
+  // keep last-fetched data so tariff changes recompute slots without refetch
+  let lastHistory = [];
+  let lastPrediction = [];
+  let currentTariffKey = "domestic"; // default
+  let currentTariff = TARIFFS[currentTariffKey];
+
+  // helper to convert YYYY-MM-DD -> YYYYMMDD (NASA API)
+  function toNASADate(iso) {
+    return iso.replace(/-/g, "");
+  }
+
+  function updateSummaryBoxes(history) {
+    const todaySolar = history.at(-1)?.solar ?? null;
+    const todayLoad = history.at(-1)?.load ?? null;
+    const peakV = (Math.random() * 50 + 350).toFixed(1);
+    const peakI = (Math.random() * 10 + 20).toFixed(1);
+
+    document.getElementById("solarToday").textContent = todaySolar == null ? "-- kWh" : `${todaySolar.toFixed(2)} kWh`;
+    document.getElementById("loadToday").textContent = todayLoad == null ? "-- kWh" : `${todayLoad.toFixed(2)} kWh`;
+    document.getElementById("peakV").textContent = `${peakV} V`;
+    document.getElementById("peakI").textContent = `${peakI} A`;
+  }
+
+  function createChart(ctx, labels, datasets) {
+    return new Chart(ctx, {
+      type: "line",
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "top" } },
+        scales: { y: { beginAtZero: false } },
+      },
+    });
+  }
+
+  function updatePredictiveMessage(pred) {
+    if (!pred || pred.length === 0) {
       const msg = document.getElementById("predictionMessage");
-      if (net > 0) {
-        msg.textContent = "☀️ Surplus energy expected — good time to store or sell!";
-        msg.className = "p-3 bg-green-100 rounded text-sm text-green-800";
-      } else if (net < 0) {
-        msg.textContent = "⚡ Deficit expected — consider optimizing load or battery.";
-        msg.className = "p-3 bg-red-100 rounded text-sm text-red-800";
-      } else {
-        msg.textContent = "✅ Balanced forecast — generation meets demand.";
-        msg.className = "p-3 bg-blue-100 rounded text-sm text-blue-800";
-      }
+      msg.textContent = "No forecast data available.";
+      msg.className = "p-3 bg-gray-100 rounded text-sm text-gray-800";
+      return;
     }
 
-    function createDualChart(ctx, label, pastLabels, pastData, predLabels, predData, color) {
-      return new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: [...pastLabels, ...predLabels],
-          datasets: [
-            { label: `${label} (Past)`, data: pastData, borderColor: color, fill:false, tension:0.2 },
-            { label: `${label} (Predicted)`, data:[...new Array(pastLabels.length).fill(null), ...predData], borderColor: color, borderDash:[6,4], fill:false, tension:0.2 }
-          ]
-        },
-        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:false}} }
-      });
+    const totalSolar = pred.reduce((a, b) => a + (b.yhat_solar || 0), 0).toFixed(1);
+    const totalLoad = pred.reduce((a, b) => a + (b.yhat_load || 0), 0).toFixed(1);
+    const net = (totalSolar - totalLoad).toFixed(1);
+    const msg = document.getElementById("predictionMessage");
+
+    if (net > 0) {
+      msg.textContent = `☀️ Surplus expected (+${net} kWh). Ideal for storage!`;
+      msg.className = "p-3 bg-green-100 rounded text-sm text-green-800";
+    } else if (net < 0) {
+      msg.textContent = `⚡ Deficit expected (${net} kWh). Optimize usage!`;
+      msg.className = "p-3 bg-red-100 rounded text-sm text-red-800";
+    } else {
+      msg.textContent = "✅ Balanced forecast (0 kWh net).";
+      msg.className = "p-3 bg-blue-100 rounded text-sm text-blue-800";
     }
+  }
 
-    function createMergedChart(ctx, hist, pred) {
-      const labels = [...hist.labels, ...pred.labels];
-      return new Chart(ctx, {
-        type:"line",
-        data:{
-          labels,
-          datasets:[
-            { label:"Solar (Past)", data:hist.solar, borderColor:"#f59e0b", fill:false },
-            { label:"Solar (Predicted)", data:[...new Array(hist.labels.length).fill(null), ...pred.solar], borderColor:"#f59e0b", borderDash:[6,4], fill:false },
-            { label:"Load (Past)", data:hist.load, borderColor:"#06b6d4", fill:false },
-            { label:"Load (Predicted)", data:[...new Array(hist.labels.length).fill(null), ...pred.load], borderColor:"#06b6d4", borderDash:[6,4], fill:false }
-          ]
-        },
-        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:false}} }
-      });
-    }
+  // new: update the three numeric slots (total energy, solar used, estimated savings)
+  function updateEnergySlots(history, prediction) {
+    // Use avg_power from signed-up user to estimate electrical energy for the selected history period.
+    const rawAvg = Number(window.CURRENT_USER?.avg_power || 0);
+    let avgKw = isNaN(rawAvg) ? 0 : rawAvg;
+    if (avgKw > 1000) avgKw = avgKw / 1000;
 
-    document.getElementById("predApply").addEventListener("click", async () => {
-      const start = document.getElementById("predStart").value;
-      const end = document.getElementById("predEnd").value;
-      if (!start || !end) return alert("⚠️ Select both start and end dates!");
+    const hist = history || [];
+    const days = hist.length || 0;
 
-      const spinner = document.getElementById("loadingSpinner");
-      spinner.classList.remove("hidden");
+    // total electrical energy for selected period (kWh) = avg_kW * 24 * days
+    const totalLoad = avgKw * 24 * days;
 
-      try {
-        const { history, prediction } = await fetchFlaskData(start, end);
-        if (!history.length && !prediction.length) throw new Error("No data from Flask");
+    // solarConsumed over selected period: for each history day use solar (kWh) vs estimated load per day (avgKw*24)
+    const perDayLoadEstimate = avgKw * 24;
+    const solarConsumed = hist.reduce((s, r) => {
+      const solar = Number(r.solar || r.solar_irradiance || 0);
+      // assume server or frontend converted NASA irradiance to kWh (if not, convert before using)
+      return s + Math.min(isNaN(solar) ? 0 : solar, perDayLoadEstimate);
+    }, 0);
 
-        const hist = {
-          labels: history.map(h => h.date),
-          solar: history.map(h => h.yhat_solar),
-          load: history.map(h => h.yhat_load)
-        };
-        const pred = {
-          labels: prediction.map(p => p.ds),
-          solar: prediction.map(p => p.yhat_solar),
-          load: prediction.map(p => p.yhat_load)
-        };
+    const savings = solarConsumed * currentTariff;
 
-        updatePredictiveBox(pred.solar, pred.load);
+    // write to DOM (rounded)
+    document.getElementById("energyTotal").textContent = `${totalLoad.toFixed(2)} kWh`;
+    document.getElementById("solarTotal").textContent = `${solarConsumed.toFixed(2)} kWh`;
+    document.getElementById("savingsTotal").textContent = `₹ ${savings.toFixed(2)}`;
+  }
 
-        if (window.mergedChart) window.mergedChart.destroy();
-        if (window.solarChart) window.solarChart.destroy();
-        if (window.loadChart) window.loadChart.destroy();
+  function renderDashboard(history, prediction) {
+    // store latest
+    lastHistory = history || [];
+    lastPrediction = prediction || [];
 
-        window.mergedChart = createMergedChart(document.getElementById("mergedChart").getContext("2d"), hist, pred);
-        window.solarChart = createDualChart(document.getElementById("solarChart").getContext("2d"), "Solar", hist.labels, hist.solar, pred.labels, pred.solar, "#f59e0b");
-        window.loadChart = createDualChart(document.getElementById("loadChart").getContext("2d"), "Load", hist.labels, hist.load, pred.labels, pred.load, "#06b6d4");
-      } catch (err) {
-        console.error("❌ Dashboard Error:", err);
-        alert("❌ Error fetching or rendering data. Check console for details.");
-      } finally {
-        spinner.classList.add("hidden");
+    updateSummaryBoxes(history);
+    updatePredictiveMessage(prediction);
+    updateEnergySlots(history, prediction);
+
+    const histLabels = history.map(h => h.date);
+    const predLabels = prediction.map(p => p.ds);
+
+    const histSolar = history.map(h => h.solar);
+    const histLoad = history.map(h => h.load);
+    const predSolar = prediction.map(p => p.yhat_solar);
+    const predLoad = prediction.map(p => p.yhat_load);
+
+    ["mergedChart", "solarChart", "loadChart"].forEach(id => {
+      if (window[id]) {
+        try { window[id].destroy(); } catch (e) {}
       }
     });
-  </script>
+
+    window.mergedChart = createChart(document.getElementById("mergedChart").getContext("2d"),
+      [...histLabels, ...predLabels],
+      [
+        { label: "Solar Energy Produced (Past)", data: histSolar, borderColor: "#f59e0b", fill: false },
+        { label: "Solar Energy Produced (Predicted)", data: [...Array(histSolar.length).fill(null), ...predSolar], borderColor: "#f59e0b", borderDash: [6,4], fill: false },
+        { label: "Solar Energy Consumed (Past)", data: histLoad, borderColor: "#16a34a", fill: false },
+        { label: "Solar Energy Consumed (Predicted)", data: [...Array(histLoad.length).fill(null), ...predLoad], borderColor: "#16a34a", borderDash: [6,4], fill: false },
+      ]
+    );
+
+    window.solarChart = createChart(document.getElementById("solarChart").getContext("2d"),
+      [...histLabels, ...predLabels],
+      [
+        { label: "Solar Energy Produced (Past)", data: histSolar, borderColor: "#f59e0b", fill: false },
+        { label: "Solar Energy Produced (Predicted)", data: [...Array(histSolar.length).fill(null), ...predSolar], borderColor: "#f59e0b", borderDash: [6,4], fill: false },
+      ]
+    );
+
+    window.loadChart = createChart(document.getElementById("loadChart").getContext("2d"),
+      [...histLabels, ...predLabels],
+      [
+        { label: "Solar Energy Consumed (Past)", data: histLoad, borderColor: "#16a34a", fill: false },
+        { label: "Solar Energy Consumed (Predicted)", data: [...Array(histLoad.length).fill(null), ...predLoad], borderColor: "#16a34a", borderDash: [6,4], fill: false },
+      ]
+    );
+  }
+
+  // Merge NASA solar data and load data into unified history array
+  function mergeSatelliteAndLoad(nasaRecords, loadRecords) {
+    const nasaMap = {};
+    (nasaRecords || []).forEach(r => {
+      // nasa returns dates as YYYYMMDD keys; server already sends 'date' field
+      let d = String(r.date);
+      if (/^\d{8}$/.test(d)) d = `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;
+      nasaMap[d] = r.solar_irradiance ?? r.solar ?? null;
+    });
+    const loadMap = {};
+    (loadRecords || []).forEach(r => { loadMap[r.date] = r.load; });
+
+    const allDates = Object.keys({...nasaMap, ...loadMap}).sort();
+    return allDates.map(d => ({ date: d, solar: nasaMap[d] != null ? Number(nasaMap[d]) : null, load: loadMap[d] != null ? Number(loadMap[d]) : null }));
+  }
+
+  async function fetchForRange(startIso, endIso, horizonDays = DEFAULT_HORIZON) {
+    try {
+      // NASA expects YYYYMMDD
+      const nasaStart = toNASADate(startIso);
+      const nasaEnd = toNASADate(endIso);
+
+      const [nasaRes, loadRes] = await Promise.all([
+        fetch(`http://127.0.0.1:5000/nasa_data?start=${nasaStart}&end=${nasaEnd}`),
+        fetch(`http://127.0.0.1:5000/load_history?start=${startIso}&end=${endIso}`)
+      ]);
+
+      const nasaJson = await nasaRes.json();
+      const loadJson = await loadRes.json();
+
+      const nasaData = (nasaJson && nasaJson.data) ? nasaJson.data : [];
+      const loadData = (loadJson && loadJson.data) ? loadJson.data : [];
+
+      const history = mergeSatelliteAndLoad(nasaData, loadData);
+
+      // request prediction for horizonDays after endIso
+      const endDate = new Date(endIso);
+      const startPred = new Date(endDate);
+      startPred.setDate(endDate.getDate() + 1);
+      const endPred = new Date(endDate);
+      endPred.setDate(endDate.getDate() + horizonDays);
+
+      const startPredStr = startPred.toISOString().split("T")[0];
+      const endPredStr = endPred.toISOString().split("T")[0];
+
+      const predictRes = await fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ start_date: startPredStr, end_date: endPredStr })
+      });
+      const predictJson = await predictRes.json();
+      const prediction = (predictJson && predictJson.predictions) ? predictJson.predictions : [];
+
+      // The predict endpoint returns yhat_solar and yhat_load columns named with suffixes
+      renderDashboard(history, prediction);
+    } catch (err) {
+      console.error("Error fetching range data:", err);
+      renderDashboard([], []);
+    }
+  }
+
+  // add profile drawer controls
+  function openProfileDrawer() {
+    const drawer = document.getElementById("profileDrawer");
+    const overlay = document.getElementById("profileOverlay");
+    const btn = document.getElementById("profileBtn");
+    if (!drawer || !overlay || !btn) return;
+    drawer.classList.remove("translate-x-full");
+    drawer.classList.add("translate-x-0");
+    overlay.classList.remove("hidden");
+    btn.setAttribute("aria-expanded", "true");
+  }
+  function closeProfileDrawer() {
+    const drawer = document.getElementById("profileDrawer");
+    const overlay = document.getElementById("profileOverlay");
+    const btn = document.getElementById("profileBtn");
+    if (!drawer || !overlay || !btn) return;
+    drawer.classList.remove("translate-x-0");
+    drawer.classList.add("translate-x-full");
+    overlay.classList.add("hidden");
+    btn.setAttribute("aria-expanded", "false");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const loadBtn = document.getElementById("loadRangeBtn");
+    const startInput = document.getElementById("startDateInput");
+    const endInput = document.getElementById("endDateInput");
+    const horizonSel = document.getElementById("horizonSelect");
+    const tariffSel = document.getElementById("tariffSelect");
+    const tariffVal = document.getElementById("tariffValue");
+    const profileBtn = document.getElementById("profileBtn");
+    const profileClose = document.getElementById("profileClose");
+    const profileOverlay = document.getElementById("profileOverlay");
+
+    // initialize tariff UI
+    tariffSel.value = currentTariffKey;
+    tariffVal.textContent = `₹ ${currentTariff.toFixed(2)} /kWh`;
+
+    tariffSel.addEventListener("change", () => {
+      currentTariffKey = tariffSel.value;
+      currentTariff = TARIFFS[currentTariffKey] ?? TARIFFS.domestic;
+      tariffVal.textContent = `₹ ${currentTariff.toFixed(2)} /kWh`;
+      // recompute slots using last fetched data without refetching
+      updateEnergySlots(lastHistory, lastPrediction);
+    });
+
+    // default to last 14 days
+    const endDefault = new Date();
+    const startDefault = new Date();
+    startDefault.setDate(endDefault.getDate() - 13);
+    startInput.value = startDefault.toISOString().split("T")[0];
+    endInput.value = endDefault.toISOString().split("T")[0];
+
+    loadBtn.addEventListener("click", () => {
+      const s = startInput.value;
+      const e = endInput.value;
+      const h = Number(horizonSel.value || DEFAULT_HORIZON);
+      if (!s || !e) return alert("Please pick both start and end dates.");
+      if (new Date(s) > new Date(e)) return alert("Start date must be <= end date.");
+      fetchForRange(s, e, h);
+    });
+
+    if (profileBtn) profileBtn.addEventListener("click", openProfileDrawer);
+    if (profileClose) profileClose.addEventListener("click", closeProfileDrawer);
+    if (profileOverlay) profileOverlay.addEventListener("click", closeProfileDrawer);
+    // close on Esc
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeProfileDrawer(); });
+
+    // initial load
+    fetchForRange(startInput.value, endInput.value, Number(horizonSel.value));
+  });
+})();
+</script>
 </body>
 </html>

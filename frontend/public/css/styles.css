@@ -1,0 +1,88 @@
+/* Global green + yellow theme used across pages */
+
+:root{
+  --brand-green: #16a34a;    /* green-600 */
+  --brand-green-600: #15803d;
+  --brand-yellow: #facc15;   /* yellow-400 */
+  --brand-yellow-600: #f59e0b;
+  --glass-bg: rgba(255,250,230,0.85); /* warm pale */
+  --muted: #4b5563;
+  --card-shadow: 0 10px 30px rgba(6,95,70,0.08);
+  --solar-color: #f59e0b;
+  --load-color: #16a34a;
+}
+
+/* Page background */
+body {
+  background: linear-gradient(180deg, rgba(243,255,238,1) 0%, rgba(255,251,235,1) 100%);
+  color: #064e3b;
+}
+
+/* Navbar: green -> yellow */
+nav {
+  background: linear-gradient(90deg, var(--brand-green) 0%, var(--brand-yellow-600) 100%) !important;
+  border-bottom: 1px solid rgba(22,163,74,0.08);
+}
+
+/* Glass cards */
+.glass {
+  background: linear-gradient(180deg, rgba(255,255,255,0.88), var(--glass-bg));
+  box-shadow: var(--card-shadow);
+  border-radius: 12px;
+  border: 1px solid rgba(22,163,74,0.06);
+}
+
+/* Headings and text */
+h1, h2, h3 { color: #064e3b; }
+.muted { color: var(--muted) !important; }
+
+/* Buttons primary */
+button, .btn-primary {
+  background: linear-gradient(90deg, var(--brand-green) 0%, var(--brand-yellow) 100%);
+  color: #fff;
+  border: none;
+}
+button:hover, .btn-primary:hover {
+  box-shadow: 0 6px 18px rgba(21,128,61,0.12);
+}
+
+/* Inputs */
+input[type="date"], input[type="number"], input[type="text"], select {
+  border: 1px solid rgba(22,163,74,0.12);
+  background: #fff;
+  color: #064e3b;
+}
+
+/* Profile drawer */
+#profileDrawer {
+  background: linear-gradient(180deg, #ffffff, rgba(250,249,231,1));
+}
+
+/* Cards */
+.card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(6,95,70,0.04);
+}
+
+/* Tariff display */
+#tariffDisplay, #tariffValue { color: #065f46; font-weight: 600; }
+
+/* Chart canvas container visuals */
+.chart-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,250,230,0.9));
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(6,95,70,0.04);
+}
+
+/* small responsive tweaks */
+@media (max-width: 768px) {
+  nav .hidden.md\\:flex { display: none !important; }
+}
+
+/* utility CSS variables for JS if needed */
+:root {
+  --solar-stroke: var(--solar-color);
+  --load-stroke: var(--load-color);
+}
