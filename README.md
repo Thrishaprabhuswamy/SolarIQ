@@ -28,6 +28,10 @@ It provides beautiful **Chart.js visualizations**, **live metrics**, and **forec
 ### **Fallback Mode**
 - When Flask isn’t connected, the dashboard auto-generates **dummy solar/load data** for demonstration.
 
+## Credits
+This project was developed as part of a hackathon team effort.
+Original repository by aananyaph.
+
 ---
 
 
